@@ -1,0 +1,48 @@
+
+#todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 24px 0;
+}
+
+#todo-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+}
+
+.task-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.task-content input[type="checkbox"] {
+    flex-shrink: 0;
+}
+
+.task-content span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.task-actions {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.task-actions button {
+    white-space: nowrap;
+    padding: 9px 12px;
+    cursor: pointer;
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma Todo List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <h1>Ma Todo List</h1>
+        <p>Organise tes tâches, une etape a la fois </p>
+        <form id="todo-form">
+            <input
+            type="text"
+            id="todo-input"
+            placeholder="quelle tache peut-tu realiser ?"
+            required
+            />
+            <button type="submit">Ajouter</button>
+        </form>
+        <ul id="todo-list"></ul>
+        <p id="message"></p>
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>
