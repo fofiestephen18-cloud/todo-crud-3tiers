@@ -1,27 +1,35 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Todo List</title>
+    <title>Mes tâches</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <main class="container">
-        <h1>Ma Todo List</h1>
-        <p>Organise tes tâches, une etape a la fois </p>
+        <header class="header">
+            <h1>MES TÂCHES</h1>
+            <span class="subtitle">UNE CHOSE À LA FOIS.</span>
+        </header>
+
         <form id="todo-form">
             <input
-            type="text"
-            id="todo-input"
-            placeholder="quelle tache peut-tu realiser ?"
-            required
-            />
-            <button type="submit">Ajouter</button>
+                type="text"
+                id="todo-input"
+                placeholder="Ajouter une tâche..."
+                maxlength="200"
+                required
+            >
+            <button type="submit" aria-label="Ajouter une tâche">+</button>
         </form>
+
+        <p id="message" role="status" aria-live="polite"></p>
+
         <ul id="todo-list"></ul>
-        <p id="message"></p>
     </main>
+
     <script src="app.js"></script>
 </body>
 </html>
