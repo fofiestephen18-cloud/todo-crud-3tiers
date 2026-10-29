@@ -9,6 +9,8 @@ RUN npm install
 COPY . .
 
 ENV VITE_API_URL=/api/todos
+RUN chmod +x node_modules/.bin/vite
+
 RUN npm run build
 
 FROM nginx:alpine
