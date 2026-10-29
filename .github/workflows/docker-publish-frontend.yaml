@@ -4,7 +4,7 @@ name: deploy frontend
 on:
   push:
     branches:
-      - develop
+      - main
     paths:
       - 'frontend/**'  
 
