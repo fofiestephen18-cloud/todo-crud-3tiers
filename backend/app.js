@@ -55,6 +55,8 @@ const allowedOrigins = [
     "http://192.168.1.227:3001",
     "http://localhost:3001",
     "http://localhost:5173",
+    "https://emblem-crushing-passenger.ngrok-free.dev",
+    "http://localhost:4040"
 ];
 
 app.use(cors({
