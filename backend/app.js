@@ -1,6 +1,6 @@
 
 require("dotenv").config();
-// new commentaire
+
 const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
@@ -11,7 +11,7 @@ const pool = require("./db");
 const app = express();
 
 // ========================================
-// 1. FONCTIONS DE JOURNALISATION
+// 1. JOURNALISATION
 // ========================================
 
 function log(message) {
@@ -30,7 +30,6 @@ function logError(message, error) {
 // 2. MIDDLEWARES
 // ========================================
 
-// Journaliser toutes les requêtes HTTP
 app.use((req, res, next) => {
     const debut = Date.now();
 
@@ -48,12 +47,25 @@ app.use((req, res, next) => {
     next();
 });
 
+// Origines autorisées pour le frontend
+const allowedOrigins = [
+    "http://todo.local:3001",
+    "http://todo-backend.local",
+    "http://todo-frontend.local",
+    "http://192.168.1.227:3001",
+    "http://localhost:3001",
+    "http://localhost:5173",
+];
+
 app.use(cors({
-    origin: [
-        "http://192.168.56.101:8080",
-        "http://192.168.56.101:3000",
-        "http://localhost:3000",
-    ],
+    origin: (origin, callback) => {
+        // Autoriser les requêtes sans origine (curl, Postman, Swagger)
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("Origine non autorisée par CORS"));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -67,15 +79,40 @@ app.use(express.json());
 const swaggerOptions = {
     definition: {
         openapi: "3.0.0",
+
         info: {
             title: "Todo CRUD API",
             version: "1.0.0",
-            description: "API de gestion des tâches avec PostgreSQL"
+            description: `
+API REST de gestion des tâches.
+
+Fonctionnalités :
+- Récupérer toutes les tâches.
+- Créer une tâche.
+- Modifier une tâche.
+- Supprimer une tâche.
+
+Technologies : Node.js, Express et PostgreSQL.
+            `
         },
+
+        // URL relative : Swagger utilise automatiquement
+        // le même hôte et le même port que l'API.
         servers: [
-            { url: "http://localhost:3000" }
+            {
+                url: "/",
+                description: "Serveur API actuel"
+            }
+        ],
+
+        tags: [
+            {
+                name: "Todos",
+                description: "Gestion des tâches"
+            }
         ]
     },
+
     apis: [path.join(__dirname, "app.js")]
 };
 
@@ -87,13 +124,25 @@ app.use(
     swaggerUi.setup(swaggerSpec)
 );
 
+// Accès au document OpenAPI JSON
+app.get("/api-docs.json", (req, res) => {
+    res.json(swaggerSpec);
+});
+
 // ========================================
 // 4. ROUTE D'ACCUEIL
 // ========================================
 
 app.get("/", (req, res) => {
     res.json({
-        message: "Bienvenue sur l'API Todo CRUD !"
+        message: "Bienvenue sur l'API Todo CRUD !",
+        documentation: "/api-docs",
+        endpoints: {
+            getTodos: "GET /api/todos",
+            createTodo: "POST /api/todos",
+            updateTodo: "PUT /api/todos/:id",
+            deleteTodo: "DELETE /api/todos/:id"
+        }
     });
 });
 
@@ -109,17 +158,34 @@ app.get("/", (req, res) => {
  *     tags: [Todos]
  *     responses:
  *       200:
- *         description: Liste des tâches
+ *         description: Liste des tâches récupérée avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   title:
+ *                     type: string
+ *                   completed:
+ *                     type: boolean
+ *       500:
+ *         description: Erreur serveur
  */
+
 app.get("/api/todos", async (req, res) => {
     try {
         const result = await pool.query(
             "SELECT id, title, completed FROM todos ORDER BY id ASC"
         );
 
-        log(`PostgreSQL : ${result.rowCount} tâche(s) récupérée(s)`);
+        log(`${result.rowCount} tâche(s) récupérée(s)`);
 
-        res.json(result.rows);
+        res.status(200).json(result.rows);
+
     } catch (error) {
         logError("Erreur GET /api/todos", error);
 
@@ -137,7 +203,7 @@ app.get("/api/todos", async (req, res) => {
  * @swagger
  * /api/todos:
  *   post:
- *     summary: Créer une tâche
+ *     summary: Créer une nouvelle tâche
  *     tags: [Todos]
  *     requestBody:
  *       required: true
@@ -145,23 +211,25 @@ app.get("/api/todos", async (req, res) => {
  *         application/json:
  *           schema:
  *             type: object
- *             required: [title]
+ *             required:
+ *               - title
  *             properties:
  *               title:
  *                 type: string
  *                 example: Apprendre Express
  *     responses:
  *       201:
- *         description: Tâche créée
+ *         description: Tâche créée avec succès
  *       400:
  *         description: Titre invalide
+ *       500:
+ *         description: Erreur serveur
  */
+
 app.post("/api/todos", async (req, res) => {
     const { title } = req.body;
 
     if (typeof title !== "string" || !title.trim()) {
-        log("POST /api/todos : titre invalide");
-
         return res.status(400).json({
             error: "Le titre de la tâche est obligatoire."
         });
@@ -178,6 +246,7 @@ app.post("/api/todos", async (req, res) => {
         log(`Tâche créée : id=${result.rows[0].id}`);
 
         res.status(201).json(result.rows[0]);
+
     } catch (error) {
         logError("Erreur POST /api/todos", error);
 
@@ -203,6 +272,7 @@ app.post("/api/todos", async (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Identifiant de la tâche
  *     requestBody:
  *       required: true
  *       content:
@@ -212,8 +282,10 @@ app.post("/api/todos", async (req, res) => {
  *             properties:
  *               title:
  *                 type: string
+ *                 example: Apprendre JavaScript
  *               completed:
  *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Tâche modifiée
@@ -221,22 +293,21 @@ app.post("/api/todos", async (req, res) => {
  *         description: Données invalides
  *       404:
  *         description: Tâche introuvable
+ *       500:
+ *         description: Erreur serveur
  */
+
 app.put("/api/todos/:id", async (req, res) => {
     const id = Number(req.params.id);
     const { title, completed } = req.body;
 
     if (!Number.isInteger(id) || id <= 0) {
-        log(`PUT /api/todos/${req.params.id} : identifiant invalide`);
-
         return res.status(400).json({
             error: "Identifiant invalide."
         });
     }
 
     if (title === undefined && completed === undefined) {
-        log(`PUT /api/todos/${id} : aucune donnée à modifier`);
-
         return res.status(400).json({
             error: "Fournis un titre ou un état à modifier."
         });
@@ -246,16 +317,15 @@ app.put("/api/todos/:id", async (req, res) => {
         title !== undefined &&
         (typeof title !== "string" || !title.trim())
     ) {
-        log(`PUT /api/todos/${id} : titre invalide`);
-
         return res.status(400).json({
             error: "Le titre ne peut pas être vide."
         });
     }
 
-    if (completed !== undefined && typeof completed !== "boolean") {
-        log(`PUT /api/todos/${id} : état completed invalide`);
-
+    if (
+        completed !== undefined &&
+        typeof completed !== "boolean"
+    ) {
         return res.status(400).json({
             error: "completed doit être un booléen."
         });
@@ -276,8 +346,6 @@ app.put("/api/todos/:id", async (req, res) => {
         );
 
         if (result.rows.length === 0) {
-            log(`PUT /api/todos/${id} : tâche introuvable`);
-
             return res.status(404).json({
                 error: "Tâche introuvable."
             });
@@ -285,7 +353,8 @@ app.put("/api/todos/:id", async (req, res) => {
 
         log(`Tâche modifiée : id=${id}`);
 
-        res.json(result.rows[0]);
+        res.status(200).json(result.rows[0]);
+
     } catch (error) {
         logError(`Erreur PUT /api/todos/${id}`, error);
 
@@ -311,18 +380,22 @@ app.put("/api/todos/:id", async (req, res) => {
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Identifiant de la tâche
  *     responses:
  *       200:
  *         description: Tâche supprimée
+ *       400:
+ *         description: Identifiant invalide
  *       404:
  *         description: Tâche introuvable
+ *       500:
+ *         description: Erreur serveur
  */
+
 app.delete("/api/todos/:id", async (req, res) => {
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
-        log(`DELETE /api/todos/${req.params.id} : identifiant invalide`);
-
         return res.status(400).json({
             error: "Identifiant invalide."
         });
@@ -335,8 +408,6 @@ app.delete("/api/todos/:id", async (req, res) => {
         );
 
         if (result.rows.length === 0) {
-            log(`DELETE /api/todos/${id} : tâche introuvable`);
-
             return res.status(404).json({
                 error: "Tâche introuvable."
             });
@@ -344,9 +415,11 @@ app.delete("/api/todos/:id", async (req, res) => {
 
         log(`Tâche supprimée : id=${id}`);
 
-        res.json({
-            message: "Tâche supprimée avec succès."
+        res.status(200).json({
+            message: "Tâche supprimée avec succès.",
+            id: result.rows[0].id
         });
+
     } catch (error) {
         logError(`Erreur DELETE /api/todos/${id}`, error);
 
@@ -357,7 +430,7 @@ app.delete("/api/todos/:id", async (req, res) => {
 });
 
 // ========================================
-// 9. ROUTE INCONNUE
+// 9. GESTION DES ROUTES INCONNUES
 // ========================================
 
 app.use((req, res) => {
@@ -369,7 +442,7 @@ app.use((req, res) => {
 });
 
 // ========================================
-// 10. EXPORTER L'APPLICATION
+// 10. EXPORTATION
 // ========================================
 
 module.exports = app;
